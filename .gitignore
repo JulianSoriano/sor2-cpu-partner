@@ -1,0 +1,17 @@
+# Never commit ROM images (the original or patched game)
+*.md.bak
+/Streets of Rage 2*.md
+*.bin
+*.gen
+*.smd
+*.zip
+# build outputs
+src/ai_vb.asm
+src/ai_mot.asm
+src/mem.inc
+src/memoff
+src/memoff.c
+src/c_syms.inc
+src/*.lst
+src/*.bin
+__pycache__/

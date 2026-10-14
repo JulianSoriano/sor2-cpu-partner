@@ -110,7 +110,7 @@ flag bit 6 set; one hit breaks it and its slot turns into whatever was inside.
 | `$FFFC22` / `$FC26` | camera x (negated) / camera y |
 | `$FFFC42` / `$FC44` | stage × 2 / area × 2 |
 | `$FFFC4B` | VBlank in progress |
-| `$FFFD04` | difficulty (0–10 in steps of 2; 10 = MANIA) |
+| `$FFFD04` | difficulty (0–10 in steps of 2: VERY EASY, EASY, NORMAL, HARD, HARDEST, MANIA) |
 | `$FFFD06` | starting lives − 1 |
 | `$FFFD0E` | starting stage |
 | `$FFFD11` | "same character allowed" (the game's own cheat flag) |
@@ -121,7 +121,7 @@ flag bit 6 set; one hit breaks it and its slot turns into whatever was inside.
 | `$FFFE10` | `AIFLAG`: 1 = CPU PARTNER mode (2 = player filters only, for testing) |
 | `$FFFE11` | previous AI pad byte (to generate "newly pressed" bits) |
 | `$FFFE12` | character select: P1 locked in last frame |
-| `$FFFE13` | starting stage picked on the main menu |
+| `$FFFE13` | `CONTSEL`: continues chosen in OPTIONS minus 3 (0–6). Zero after the boot-time RAM clear, so the default is 3 |
 | `$FFFE14` | game stack pointer saved while the AI runs |
 | `$FFFE18`/`$19` | VBlank count at the last AI run / frames still to skip |
 | `$FFFE1A` | VDP H/V counter when the main loop finished the last frame |
@@ -137,23 +137,25 @@ flag bit 6 set; one hit breaks it and its slot turns into whatever was inside.
 |---|---|---|
 | `$0007CC` | `move.w $FC08,$FC6E` (per-frame input copy) | **AiHook**: runs the AI and writes Player 2's pad |
 | `$001A40` | `move.b #3,$FC10` (main loop finished) | **FrameDone**: also records the VDP beam position for the AI's time budget |
-| `$006768` | draw OPTIONS | **MenuDraw**: also draws `CPU PARTNER` and `STAGE n` |
-| `$0067E2` | main-menu up/down | **MenuNav**: 5 entries, skips 2P/DUEL without a second pad, LEFT/RIGHT stage |
+| `$006768` | draw OPTIONS | **MenuDraw**: also draws `CPU PARTNER` |
+| `$0067E2` | main-menu up/down | **MenuNav**: 5 entries, skips 2P/DUEL without a second pad |
 | `$006726` | menu reset when no P2 pad | **MenuFix** |
-| `$006890` | menu start | **MenuStart**: sets `AIFLAG`, starting stage, difficulty, same-character flag |
+| `$006890` | menu start | **MenuStart**: sets `AIFLAG` and the same-character flag |
 | `$006A02` | P2 character select input | **SelectP2**: after P1 locks in, P1's pad drives the P2 cursor |
 | `$00B784` | continue: "bump character if same as partner" | **ContSame**: skipped when same character is allowed |
 | `$004CD2`, `$0052BC`, `$004BA6`, `$005162` | hit / grab / thrown-object / thrown-body collision loops | **FfHit / FfGrab / FfThrown / FfBody**: skip player-vs-player in CPU PARTNER mode |
 | `$00393E`, `$0038BC` | camera x / y: "wait for both players" | **CamX / CamY**: the CPU alone can push the screen |
-| `$00F95E`, `$00F98A` | options LEVEL left/right | **OptUp / OptDown**: always MANIA |
-| `$00F896`, `$00F8CA` | options cursor up/down | **OptNavUp / OptNavDown**: skip the removed PLAYERS row |
-| `$00FCF2` | draw PLAYERS row | branch over it; the rows below are moved up one line (VDP addresses at `$FE50–$FE9B`) |
+| `$00F896`, `$00F8CA` | options cursor up/down | **OptNavUp / OptNavDown**: 8 rows (LEVEL, PLAYERS, CONTINUES, ROUND, BGM, SE, VOICE, EXIT) |
+| `$00F8F4` | options: row → handler jump table | **OptDispatch**: same handlers, plus **OptCont** for CONTINUES |
+| `$00FC9E` | options drawing routine | **OptDraw**: draws the 8 rows with the game's own text routines (`$1AF2` / `$1AFC`) |
+| `$00FC7C` | `clr.w $FD0E` when OPTIONS opens without the cheat | removed, so ROUND is kept |
+| `$00F9B4` | PLAYERS maximum 4 (8 with the cheat) | 8 |
+| `$00F974`, `$00F99C` | LEVEL skips VERY EASY and MANIA without the cheat (`bne`) | `bra`: all six are selectable |
 | `$005C8A` | title: draw `MUSIC © YUZO KOSHIRO` | **TitleText**: also draws the credit line (copyright lines moved up a row: `$5D0A`, `$5D1A`) |
 | `$0000BC` + 8 special-move routines (`$AED6 … $B3DC`) | `subq.w #8,$80(a2)` / `rts` | `trap #15` / `nop` / `rts`; TRAP #15 → **SpecTrap**: no health cost for the CPU |
 | `$0004AA`, `$0004B2`, `$000554`, `$0005D4`, `$0006BE`, `$000730`, `$000762` | VBlank handler | **VbEntry / VbGate***: no VDP work while the main loop is busy ([section 7](#7-the-vblank-race-background-corruption)) |
-| `$00040C` | `move.w #4,$FD04` | difficulty 10 (MANIA) |
 | `$000412` | `move.w #2,$FD06` | 8 (9 lives) |
-| `$006E02`, `$006E58` | `move.w #3,$A4(a2)` | 10 (9 continues: the counter is decremented before `CONTINUE n` is shown) |
+| `$006E02`, `$006E58` | `move.w #3,$A4(a2)` | **SetCont**: `CONTSEL + 4` (the counter is decremented before `CONTINUE n` is shown, so it starts at continues + 1) |
 
 ---
 

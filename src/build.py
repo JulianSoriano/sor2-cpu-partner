@@ -1,12 +1,12 @@
-"""Build v7: C brain + assembly glue -> patched ROM.
+"""Build v8: C brain + assembly glue -> patched ROM.
 
 Needs vbcc (vbccm68k), vasm (vasmm68k_mot) and a host gcc, plus the original
-"Streets of Rage 2 (USA).md" one folder up. Writes sor2_cpu_partner_v7.bin.
+"Streets of Rage 2 (USA).md" one folder up. Writes sor2_cpu_partner_v8.bin.
 """
 import subprocess, struct, sys, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, '..', 'Streets of Rage 2 (USA).md')
-OUT = os.environ.get('AIOUT') or os.path.join(HERE, 'sor2_cpu_partner_v7.bin')
+OUT = os.environ.get('AIOUT') or os.path.join(HERE, 'sor2_cpu_partner_v8.bin')
 ASM_BASE = 0x1F8000
 C_BASE = 0x1F9000
 OPT = os.environ.get('VBOPT', '1')
@@ -28,13 +28,10 @@ PATCHES = [
     (0x004BA6, 'b7ea003467000108', jsr(E_(7)) + NOP),
     (0x006726, '0c780003fc1867044278fc18', jsr(E_(8)) + NOP * 3),
     (0x005162, 'b7ea008a670000a8', jsr(E_(9)) + NOP),
-    (0x00F95E, '5478fd040c78000afd04', jsr(E_(11)) + bytes.fromhex('6000ffae')),
-    (0x00F98A, '5578fd046a00000831fc', jsr(E_(12)) + bytes.fromhex('6000ff82')),
     (0x00393E, '4a6900826b0c', jsr(E_(13))),
     (0x0038BC, '4a6900826b0c', jsr(E_(14))),
     (0x001A40, '11fc0003fc10', jsr(E_(15))),
     (0x00B784, '0c6900360000', jsr(E_(16))),
-    (0x00040C, '31fc0004fd04', bytes.fromhex('31fc000afd04')),   # difficulty MANIA
     # title screen: credit line under the copyright notices, which move up a row
     (0x005C8A, '41fa008e4eb900001af2', jsr(E_(19)) + NOP * 2),
     (0x005D0A, '4c22', bytes.fromhex('4b22')), (0x005D1A, '4d16', bytes.fromhex('4c16')),
@@ -47,20 +44,19 @@ PATCHES = [
     (0x000730, '082d0006001e', jsr(E_(24))),
     (0x000762, '082d0006001e', jsr(E_(24))),
     (0x000412, '31fc0002fd06', bytes.fromhex('31fc0008fd06')),   # default lives: 9 (stored as 8)
-    # continues: 9 for each player (the counter is decremented before the
-    # CONTINUE n prompt is shown, so it starts at 10)
-    (0x006E02, '357c000300a4', bytes.fromhex('357c000a00a4')),
-    (0x006E58, '357c000300a4', bytes.fromhex('357c000a00a4')),
-    # options screen: the PLAYERS (lives) row is gone
-    (0x00F896, '5378a9006a00000c31fc', jsr(E_(17)) + bytes.fromhex('60000076')),   # cursor up skips it
-    (0x00F8CA, '5278a9000c780007a900', jsr(E_(18)) + bytes.fromhex('60000042')),   # cursor down skips it
-    (0x00FCF2, '41fa01504eb900001af2', bytes.fromhex('6000002a') + NOP * 3),       # label + value not drawn
-    # ...and the rows below it move up one line (VDP addresses of labels / values)
-    (0x00FE50, '4618', bytes.fromhex('4518')), (0x00FE5C, '4718', bytes.fromhex('4618')),
-    (0x00FE68, '4818', bytes.fromhex('4718')), (0x00FE74, '4918', bytes.fromhex('4818')),
-    (0x00FE80, '4a24', bytes.fromhex('4924')),
-    (0x00FE8E, '462c', bytes.fromhex('452c')), (0x00FE92, '472c', bytes.fromhex('462c')),
-    (0x00FE96, '482c', bytes.fromhex('472c')), (0x00FE9A, '492c', bytes.fromhex('482c')),
+    # continues: chosen in OPTIONS (3-9, default 3).  The counter is decremented
+    # before the CONTINUE n prompt is shown, so SetCont starts it at n + 1.
+    (0x006E02, '357c000300a4', jsr(E_(25))),
+    (0x006E58, '357c000300a4', jsr(E_(25))),
+    # ---- OPTIONS screen: LEVEL / PLAYERS / CONTINUES / ROUND / BGM / SE / VOICE / EXIT
+    (0x00F896, '5378a9006a00000c31fc', jsr(E_(17)) + bytes.fromhex('60000076')),   # cursor up   (8 rows)
+    (0x00F8CA, '5278a9000c780007a900', jsr(E_(18)) + bytes.fromhex('60000042')),   # cursor down (8 rows)
+    (0x00F8F4, '3038a900d040', jmp(E_(11))),                          # row -> handler (adds CONTINUES)
+    (0x00FC9E, '3438a9005242', jmp(E_(12))),                          # drawing routine
+    (0x00FC7C, '4278fd0e', NOP * 2),                                  # keep ROUND when OPTIONS opens
+    (0x00F9B4, '303c0004', bytes.fromhex('303c0008')),                # PLAYERS up to 9 without the cheat
+    (0x00F974, '6600ff9e', bytes.fromhex('6000ff9e')),                # LEVEL: VERY EASY and MANIA without the cheat
+    (0x00F99C, '6600ff76', bytes.fromhex('6000ff76')),
     # TRAP #15 -> SpecTrap (the vectors were all unused, pointing at the error handler)
     (0x0000BC, '00000206', struct.pack('>I', E_(10))),
 # special moves: "subq.w #8,$80(a2) / rts" becomes "trap #15 / nop / rts". (v2-v4 put a
@@ -124,4 +120,4 @@ def build(extra_cflags=(), debug=False, out=None):
     return out or OUT
 
 if __name__ == '__main__':
-    build(extra_cflags=tuple(os.environ.get('AIDEF', '').split()), debug='debug' in sys.argv, out=os.path.join(HERE, 'sor2_v7_debug.bin') if 'debug' in sys.argv else None)
+    build(extra_cflags=tuple(os.environ.get('AIDEF', '').split()), debug='debug' in sys.argv, out=os.path.join(HERE, 'sor2_v8_debug.bin') if 'debug' in sys.argv else None)

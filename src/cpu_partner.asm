@@ -1,5 +1,5 @@
 ; ---------------------------------------------------------------------------
-; Streets of Rage 2 (USA) - CPU partner mod, v7
+; Streets of Rage 2 (USA) - CPU partner mod, v8
 ; Assembly glue: menu additions, input hook, player<->player filters.
 ; The AI itself is C (ai.c), compiled for the 68000 and linked at C_BASE.
 ; Assembles with vasm (mot syntax):  vasmm68k_mot -Fbin -m68000 -no-opt
@@ -13,7 +13,7 @@ CREDITCMD   equ $4D0E0003
 AIFLAG      equ $FFFFFE10       ; byte: 1 = CPU partner mode active (2 = test)
 AIPREV      equ $FFFFFE11       ; byte: previous AI pad byte (for edge detect)
 SELPREV     equ $FFFFFE12       ; byte: P1 was locked in on char select last frame
-STAGESEL    equ $FFFFFE13       ; byte: starting stage chosen on the main menu (0-7)
+CONTSEL     equ $FFFFFE13       ; byte: continues chosen in OPTIONS, minus 3 (0-6; 0 after a cold boot = 3)
 SAVESP      equ $FFFFFE14       ; long: game stack pointer while the AI runs
 AISTACK     equ $FFFFE7A0       ; private stack for the AI (RAM the game never reads; was $FFFF9F00, which stage 6 uses for its scroll table)
 LASTVB      equ $FFFFFE18       ; byte: VBlank count ($FC11) at the last AI run
@@ -40,8 +40,8 @@ VSKIP       equ $C8             ; ...on or after this scanline there is no time 
         jmp MenuFix         ; 1F8030  from $006726
         jmp FfBody          ; 1F8036  from $005162
         jmp SpecTrap        ; 1F803C  TRAP #15 vector (8 special-move routines)
-        jmp OptUp           ; 1F8042  from $00F95E
-        jmp OptDown         ; 1F8048  from $00F98A
+        jmp OptDispatch     ; 1F8042  from $00F8F4
+        jmp OptDraw         ; 1F8048  from $00FC9E
         jmp CamX            ; 1F804E  from $00393E
         jmp CamY            ; 1F8054  from $0038BC
         jmp FrameDone       ; 1F805A  from $001A40
@@ -54,6 +54,7 @@ VSKIP       equ $C8             ; ...on or after this scanline there is no time 
         jmp VbGateP1        ; 1F8084  from $0004B2
         jmp VbGate54        ; 1F808A  from $0006BE
         jmp VbGate6         ; 1F8090  from $000730 / $000762
+        jmp SetCont         ; 1F8096  from $006E02 / $006E58
 
 ; ---------------------------------------------------------------------------
 ; Per-frame gameplay input hook (replaces move.w $FC08.w,$FC6E.w)
@@ -165,41 +166,186 @@ CamY:   bsr.s   CamSkipP1
 .chk:   move.l  #$38C2,(sp)
         rts
 
-; options LEVEL: always MANIA (10); left/right do nothing
-LVMIN       equ 10
-OptUp:
-OptDown:
-        move.w  #LVMIN,$FFFFFD04.w
+; ---------------------------------------------------------------------------
+; OPTIONS screen, v8.  Rows ($A900):
+;   0 LEVEL  1 PLAYERS (lives 1-9)  2 CONTINUES (3-9)  3 ROUND (stage 1-8)
+;   4 BGM  5 SE  6 VOICE  7 EXIT
+; The game's own handlers are reused for LEVEL / PLAYERS / ROUND / BGM / SE /
+; VOICE / EXIT (the cheat gating on LEVEL, PLAYERS and ROUND is patched out);
+; CONTINUES is new, and the cursor and the drawing are done here.
+; ---------------------------------------------------------------------------
+OptNavUp:                               ; replaces subq.w #1,$A900 ... (row up)
+        subq.w  #1,$FFFFA900.w
+        bpl.s   .r
+        move.w  #7,$FFFFA900.w
+.r:     rts
+OptNavDown:                             ; replaces addq.w #1,$A900 ... (row down)
+        addq.w  #1,$FFFFA900.w
+        cmpi.w  #8,$FFFFA900.w
+        bcs.s   .r
+        clr.w   $FFFFA900.w
+.r:     rts
+
+OptDispatch:                            ; replaces the game's row jump table
+        move.w  $FFFFA900.w,d0
+        add.w   d0,d0
+        add.w   d0,d0                   ; x4
+        lea     OptRows(pc),a0
+        movea.l (a0,d0.w),a0
+        jmp     (a0)
+OptRows:
+        dc.l    $F93C                   ; 0 LEVEL
+        dc.l    $F9B4                   ; 1 PLAYERS
+        dc.l    OptCont                 ; 2 CONTINUES
+        dc.l    $FB92                   ; 3 ROUND
+        dc.l    $FA0A                   ; 4 BGM
+        dc.l    $FA92                   ; 5 SE
+        dc.l    $FB1A                   ; 6 VOICE
+        dc.l    $FBDC                   ; 7 EXIT
+
+OptCont:                                ; left/right (or B/C) change the continues
+        move.b  $FFFFFC09.w,d0
+        or.b    $FFFFFC0B.w,d0
+        btst    #3,d0
+        bne.s   .up
+        btst    #5,d0
+        bne.s   .up
+        btst    #2,d0
+        bne.s   .dn
+        btst    #4,d0
+        bne.s   .dn
+        rts
+.up:    addq.b  #1,CONTSEL.w
+        cmpi.b  #6,CONTSEL.w
+        bls.s   .done
+        clr.b   CONTSEL.w
+        bra.s   .done
+.dn:    subq.b  #1,CONTSEL.w
+        bpl.s   .done
+        move.b  #6,CONTSEL.w
+.done:  jmp     $F914.l                 ; the game's "value changed": sound + redraw
+
+; the game's continue counter is decremented before "CONTINUE n" is shown, so
+; it starts at (continues + 1).  replaces move.w #3,$A4(a2)
+SetCont:
+        move.w  d0,-(sp)
+        moveq   #0,d0
+        move.b  CONTSEL.w,d0
+        cmpi.w  #6,d0
+        bls.s   .ok
+        moveq   #0,d0                   ; (stale RAM)
+.ok:    addq.w  #4,d0
+        move.w  d0,$A4(a2)
+        move.w  (sp)+,d0
         rts
 
-; options cursor ($A900 = row): row 1 (PLAYERS, the lives setting) is gone;
-; row 5 (ROUND) only exists with the game's cheat ($A902)
-OptNavUp:
-.l:     subq.w  #1,$FFFFA900.w
-        bpl.s   .c
-        move.w  #6,$FFFFA900.w
-.c:     bsr.s   OptSkip
-        beq.s   .l
+; VRAM write command for plane A (at $C000, 64 cells wide), row r, column c
+VCMD    macro
+        dc.l    (($4000|(($C000+(\1)*128+(\2)*2)&$3FFF))<<16)|((($C000+(\1)*128+(\2)*2)>>14)&3)
+        endm
+; sets the text colour: highlighted for the row under the cursor, dim otherwise
+ROWATTR macro
+        move.w  #$A760,$FFFFFC12.w
+        cmpi.w  #\1,$FFFFA900.w
+        bne.s   .a\@
+        move.w  #$8760,$FFFFFC12.w
+.a\@:
+        endm
+; a two-digit number (the game's table at $FF7E, 4 bytes per entry), index in d0
+NUMVAL  macro
+        lea     $C00000.l,a1
+        move.l  #(($4000|(($C000+(\1)*128+22*2)&$3FFF))<<16)|((($C000+(\1)*128+22*2)>>14)&3),4(a1)
+        lea     $FF7E.l,a0
+        lsl.w   #2,d0
+        adda.w  d0,a0
+        jsr     $1AFC.l
+        endm
+
+OptDraw:                                ; replaces the game's drawing routine at $FC9E
+        movem.l d0-d1/a0-a1,-(sp)
+        move.w  #$8760,$FFFFFC12.w
+        lea     $FE2C.l,a0              ; "OPTIONS"
+        jsr     $1AF2.l
+
+        ROWATTR 0                       ; LEVEL
+        lea     LblLevel(pc),a0
+        jsr     $1AF2.l
+        lea     $FE9E.l,a0              ; the game's difficulty names (row 8)
+        move.w  $FFFFFD04.w,d0
+        lsl.w   #3,d0
+        adda.w  d0,a0
+        jsr     $1AF2.l
+
+        ROWATTR 1                       ; PLAYERS
+        lea     LblPlayers(pc),a0
+        jsr     $1AF2.l
+        move.w  $FFFFFD06.w,d0
+        addq.w  #1,d0
+        NUMVAL  10
+
+        ROWATTR 2                       ; CONTINUES
+        lea     LblConts(pc),a0
+        jsr     $1AF2.l
+        moveq   #0,d0
+        move.b  CONTSEL.w,d0
+        addq.w  #3,d0
+        NUMVAL  12
+
+        ROWATTR 3                       ; ROUND
+        lea     LblRound(pc),a0
+        jsr     $1AF2.l
+        move.w  $FFFFFD0E.w,d0
+        addq.w  #1,d0
+        NUMVAL  14
+
+        ROWATTR 4                       ; BGM
+        lea     LblBgm(pc),a0
+        jsr     $1AF2.l
+        move.w  $FFFFFD08.w,d0
+        NUMVAL  16
+
+        ROWATTR 5                       ; SE
+        lea     LblSe(pc),a0
+        jsr     $1AF2.l
+        move.w  $FFFFFD0A.w,d0
+        NUMVAL  18
+
+        ROWATTR 6                       ; VOICE
+        lea     LblVoice(pc),a0
+        jsr     $1AF2.l
+        move.w  $FFFFFD0C.w,d0
+        NUMVAL  20
+
+        ROWATTR 7                       ; EXIT
+        lea     LblExit(pc),a0
+        jsr     $1AF2.l
+        movem.l (sp)+,d0-d1/a0-a1
         rts
-OptNavDown:
-.l:     addq.w  #1,$FFFFA900.w
-        cmpi.w  #7,$FFFFA900.w
-        bcs.s   .c
-        clr.w   $FFFFA900.w
-.c:     bsr.s   OptSkip
-        beq.s   .l
-        rts
-OptSkip:                                ; Z=1 -> this row does not exist
-        cmpi.w  #1,$FFFFA900.w
-        beq.s   .r
-        cmpi.w  #5,$FFFFA900.w
-        bne.s   .r                      ; (Z=0)
-        tst.w   $FFFFA902.w             ; ROUND with the cheat: Z=0
-        bne.s   .y
-        cmpi.w  #5,$FFFFA900.w          ; Z=1
-.r:     rts
-.y:     andi    #$FB,ccr
-        rts
+
+LblLevel:   VCMD 8,14
+            dc.b "LEVEL",0
+            even
+LblPlayers: VCMD 10,12
+            dc.b "PLAYERS",0
+            even
+LblConts:   VCMD 12,10
+            dc.b "CONTINUES",0
+            even
+LblRound:   VCMD 14,14
+            dc.b "ROUND",0
+            even
+LblBgm:     VCMD 16,16
+            dc.b "BGM",0
+            even
+LblSe:      VCMD 18,17
+            dc.b "SE",0
+            even
+LblVoice:   VCMD 20,14
+            dc.b "VOICE",0
+            even
+LblExit:    VCMD 23,18
+            dc.b "EXIT",0
+            even
 
 ; ---------------------------------------------------------------------------
 ; Title screen: one more line under the copyright notices
@@ -254,24 +400,11 @@ VbGate54:
 MenuDraw:                               ; replaces jsr $1AF2 (draws OPTIONS)
         jsr     $1AF2.l
         lea     MenuText(pc),a0
-        jsr     $1AF2.l
-        lea     StageText(pc),a0        ; "STAGE n", n drawn right after
-        jsr     $1AF2.l
-        moveq   #0,d0
-        move.b  STAGESEL.w,d0
-        andi.w  #7,d0
-        addi.w  #'1',d0
-        add.w   $FFFFFC12.w,d0
-        move.w  d0,$C00000
-        rts
+        jmp     $1AF2.l
 
 MenuText:
         dc.l    $69A00003               ; VRAM write, row below OPTIONS
         dc.b    "CPU PARTNER",0
-        even
-StageText:
-        dc.l    $6BA00003               ; two rows further down
-        dc.b    "STAGE ",0
         even
 
 MenuFix:                                ; replaces "if P2 pad absent and
@@ -316,21 +449,7 @@ MenuNav:                                ; P1 up/down on the main menu
         bne.s   .uset
 .u0:    moveq   #0,d1
 .uset:  move.w  d1,$FFFFFC18.w
-.done:  ; left / right: starting stage
-        btst    #2,d0
-        beq.s   .nl
-        bsr.w   MenuSfx
-        subq.b  #1,STAGESEL.w
-        bpl.s   .nl
-        move.b  #7,STAGESEL.w
-.nl:    btst    #3,d0
-        beq.s   .nr
-        bsr.w   MenuSfx
-        addq.b  #1,STAGESEL.w
-        cmpi.b  #8,STAGESEL.w
-        bcs.s   .nr
-        clr.b   STAGESEL.w
-.nr:    movem.l (sp)+,d0-d1
+.done:  movem.l (sp)+,d0-d1
         rts
 
 MenuSfx:
@@ -348,11 +467,6 @@ MenuStart:                              ; replaces cmpi.w #3,$FFFFFC18.w
         movem.l d0-d7/a0-a6,-(sp)
         jsr     ai_reset
         movem.l (sp)+,d0-d7/a0-a6
-        moveq   #0,d0                   ; starting stage from the menu
-        move.b  STAGESEL.w,d0
-        andi.w  #7,d0
-        move.w  d0,$FFFFFD0E.w
-        move.w  #LVMIN,$FFFFFD04.w      ; always MANIA
     cmpi.b  #1,$FFFFFD11.w          ; our "same character" marker from a
         bne.s   .nm                     ;   CPU game ($FF = the game's own cheat)
         sf      $FFFFFD11.w

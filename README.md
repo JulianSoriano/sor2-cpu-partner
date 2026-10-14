@@ -22,7 +22,7 @@ its own AI written in C and compiled for the console's 68000 CPU.
    | MD5 | `cb75d5a6919b61efe917bea5762c1cb7` |
    | SHA-1 | `8b656eec9692d88bbbb84787142aa732b44ce0be` |
 
-2. Apply [`patch/Streets of Rage 2 - CPU Partner v7.ips`](patch/) with any IPS patcher
+2. Apply [`patch/Streets of Rage 2 - CPU Partner v8.ips`](patch/) with any IPS patcher
    (Floating IPS, Lunar IPS, RomPatcher.js, …).
 3. Load the patched ROM in any Genesis emulator or flash cart.
 4. On the main menu choose **CPU PARTNER**.
@@ -33,10 +33,9 @@ its own AI written in C and compiled for the console's 68000 CPU.
 | Where | What |
 |---|---|
 | Title screen | Credit line `2P CPU MOD BY RAMENPHOLIFE` (the game's font has no lower case). |
-| Main menu | `1 PLAYER / 2 PLAYERS / DUEL / OPTIONS / CPU PARTNER`. **LEFT/RIGHT** picks the starting stage (1–8) for any mode. `2 PLAYERS` and `DUEL` are skipped when no second controller is plugged in. |
+| Main menu | `1 PLAYER / 2 PLAYERS / DUEL / OPTIONS / CPU PARTNER`. `2 PLAYERS` and `DUEL` are skipped when no second controller is plugged in. |
 | Character select | After you lock in, **your pad picks the CPU's character**. You and the CPU may pick the same fighter. |
-| Options | Difficulty is fixed at **MANIA**. The PLAYERS (lives) row is gone. |
-| Lives / continues | Every player starts with **9 lives** and **9 continues**. |
+| Options | **LEVEL** (VERY EASY / EASY / NORMAL / HARD / HARDEST / MANIA, default NORMAL), **PLAYERS** (lives 1–9, default 9), **CONTINUES** (3–9, default 3), **ROUND** (starting stage 1–8, applies to every mode), then BGM / SE / VOICE / EXIT as in the original. |
 
 ### What the CPU partner does
 - **Never hits you.** Friendly fire between the two players is switched off in CPU PARTNER mode only (normal 2-player mode is untouched).
@@ -68,7 +67,7 @@ Requirements:
 # put the original ROM in the repository root, named exactly:
 #   "Streets of Rage 2 (USA).md"
 cd src
-python3 build.py              # -> src/sor2_cpu_partner_v7.bin
+python3 build.py              # -> src/sor2_cpu_partner_v8.bin
 python3 build.py debug        # test build that snapshots the AI's input each frame
 ```
 

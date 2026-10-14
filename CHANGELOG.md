@@ -1,5 +1,10 @@
 # Changelog
 
+## v8
+
+- OPTIONS restored and extended: every difficulty is selectable again (**NORMAL** by default), **PLAYERS** is back as 1–9 lives (default 9), and a new **CONTINUES** row sets 3–9 continues per player (default 3).
+- The starting-stage picker moved from the main menu (LEFT/RIGHT) into OPTIONS as the **ROUND** row. The main menu is back to its five entries.
+
 ## v7
 
 - 9 continues per player (was 2).

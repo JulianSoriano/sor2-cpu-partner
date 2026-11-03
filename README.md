@@ -22,7 +22,7 @@ its own AI written in C and compiled for the console's 68000 CPU.
    | MD5 | `cb75d5a6919b61efe917bea5762c1cb7` |
    | SHA-1 | `8b656eec9692d88bbbb84787142aa732b44ce0be` |
 
-2. Apply [`patch/Streets of Rage 2 - CPU Partner v8.ips`](patch/) with any IPS patcher
+2. Apply [`patch/Streets of Rage 2 - CPU Partner v9.ips`](patch/) (latest; `v8.ips` is still there) to the original ROM with any IPS patcher
    (Floating IPS, Lunar IPS, RomPatcher.js, …).
 3. Load the patched ROM in any Genesis emulator or flash cart.
 4. On the main menu choose **CPU PARTNER**.
@@ -39,7 +39,7 @@ its own AI written in C and compiled for the console's 68000 CPU.
 
 ### What the CPU partner does
 - **Never hits you.** Friendly fire between the two players is switched off in CPU PARTNER mode only (normal 2-player mode is untouched).
-- **Jump kicks** lined-up enemies 32–90 px away, closing the gap in the air and knocking them down instead of walking into their punches. Also jump-kicks jet-pack enemies.
+- **Jump kicks** lined-up enemies 48–80 px away (v9; before that 32–90 px), closing the gap in the air and knocking them down instead of walking into their punches. Also jump-kicks jet-pack enemies.
 - **Back attack** (attack + jump) when it is crowded and an enemy is right behind it.
 - **Weapons:** picks up knives, pipes, swords and kunai, fights with them (keeping more distance with long weapons) and **throws knives and kunai** at lined-up enemies out of reach.
 - **Breaks containers first** (arcade machines, barrels, drums, crates…), then collects what falls out.
@@ -48,6 +48,7 @@ its own AI written in C and compiled for the console's 68000 CPU.
 - **Special move for free** (no health cost to the CPU) at most every ~2 s, when surrounded or about to be hit. Your own special still costs health.
 - **Recovers from throws:** holds up and taps jump to land on its feet.
 - **Follows the floor:** slides along diagonal walls instead of pushing into them and walks up the middle of the street.
+- **2P tag (v9):** a small "2P" floats over the CPU partner so you can always tell the two players apart, even when you both pick the same fighter.
 - **Draws in enemies waiting off-screen** instead of standing at the screen edge (which makes them hang back forever).
 - **Pushes the screen forward** on its own; if you lag behind, the screen edge brings you along.
 - **Handles every prompt by itself:** continues, re-picks its character, enters its high-score name (`CPU`), and chooses GAME OVER if you are out of continues so the game ends normally.
@@ -81,12 +82,13 @@ The release build is byte-identical to the ROM the IPS patch produces.
 ## Repository layout
 
 ```
-patch/   IPS patch for Streets of Rage 2 (USA)
+patch/   IPS patches for Streets of Rage 2 (USA): v8 and v9 (both apply to the original ROM)
 src/     ai.c            the CPU partner's brain (C, compiled for the 68000)
          scan.asm        hand-written 68000 versions of the AI's two hot loops
          cpu_partner.asm hooks, menus, filters, bug fixes (68000 assembly)
          build.py        compiles, assembles and patches the original ROM
          host.c          native build of ai.c for differential testing on a PC
+         v9/             the v9 patches (make-v9.js and one .s file per patch)
 docs/    technical write-up
 ```
 

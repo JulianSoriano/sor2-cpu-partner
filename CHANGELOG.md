@@ -1,5 +1,19 @@
 # Changelog
 
+## v9
+
+Patches the partner's behaviour on top of v8. **The IPS patch applies to the original, unmodified Streets of Rage 2 (USA) ROM** (it contains v8 too). Everything below was measured with scripted test runs in RetroLab; it has not been through long play-testing yet.
+
+- **Jump kicks:** fewer, and only when there is a real gap to close (cooldown 40 -> 180 frames, range 32-90 -> 48-80 px). On the stage 1 test route her jump kicks went from 114 to about 50-64.
+- **Screen edges:** with nothing to fight she heads for the middle-right of the screen (camera + 230) and never gets more than 150 px ahead of you, instead of pressing into the right edge and pulling the camera away.
+- **Twitching:** she no longer flickers left/right while waiting for off-screen enemies (a v8 bug: turning to face the enemy moved her just outside her "at my spot" zone, so she stepped back and repeated every frame), and which side of an enemy she stands on no longer flips every frame. A last filter only lets a left/right or up/down reversal through after the previous direction was held 8 frames. Test route: pace twitches 37 -> 0, pad twitches 14 -> 0 (left/right) and 23 -> 0 (up/down).
+- **Bar tables and chairs:** a table blocks her about 38 px away, 8 px short of her "spot", and she never swung. She now attacks from up to 24 px short of her spot if she did not move last frame. In the test the bar table breaks about 4 s in instead of about 19 s.
+- **2P tag:** a small "2P" (the HUD font's own tiles, the same ones the character-select screen's 2P marker uses) floats over the CPU partner so you can tell the two players apart even when you pick the same character. It sits a fixed 92 px above her feet, follows her through jumps, and only shows during play in CPU PARTNER mode (not on the character select or other menus).
+- No slowdown or crash added: on the stage 1 route 179 slow frames (2.2%) before and after, 56-59% 68000 busy, no freezes.
+- Tried and removed: giving the partner the versus-mode alternate colours when both pick the same character. The colours come from a palette line that later stages overwrite, so her outfit changed colour in some places.
+
+Source for the v9 patches is in `src/v9/` (`make-v9.js` applies them to the v8 ROM; each `.s` file explains one patch). To rebuild: build v8 as described in the README, then `node src/v9/make-v9.js v8.md v9.md`. The released IPS is the difference between the original ROM and that result.
+
 ## v8
 
 - OPTIONS restored and extended: every difficulty is selectable again (**NORMAL** by default), **PLAYERS** is back as 1–9 lives (default 9), and a new **CONTINUES** row sets 3–9 continues per player (default 3).

@@ -1,12 +1,12 @@
-"""Build v8: C brain + assembly glue -> patched ROM.
+"""Build: C brain + assembly glue + the later patches (v9_patches.json, explained in patches-v9/*.s) -> patched ROM.
 
 Needs vbcc (vbccm68k), vasm (vasmm68k_mot) and a host gcc, plus the original
-"Streets of Rage 2 (USA).md" one folder up. Writes sor2_cpu_partner_v8.bin.
+"Streets of Rage 2 (USA).md" one folder up. Writes sor2_cpu_partner_v9.bin.
 """
 import subprocess, struct, sys, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, '..', 'Streets of Rage 2 (USA).md')
-OUT = os.environ.get('AIOUT') or os.path.join(HERE, 'sor2_cpu_partner_v8.bin')
+OUT = os.environ.get('AIOUT') or os.path.join(HERE, 'sor2_cpu_partner_v9.bin')
 ASM_BASE = 0x1F8000
 C_BASE = 0x1F9000
 OPT = os.environ.get('VBOPT', '1')
@@ -113,6 +113,12 @@ def build(extra_cflags=(), debug=False, out=None):
         assert rom[addr:addr + len(orig)] == orig, hex(addr)
         assert len(new) == len(orig), hex(addr)
         rom[addr:addr + len(new)] = new
+    import json    # the v9 patches: small edits to the code above, each one checks the bytes it replaces
+    for p in json.load(open(os.path.join(HERE, 'v9_patches.json'))):
+        at, old, now = p['at'], bytes.fromhex(p['old']), bytes.fromhex(p['now'])
+        assert rom[at:at + len(old)] == old, p['name']
+        assert len(now) == len(old), p['name']
+        rom[at:at + len(now)] = now
     cs = sum(struct.unpack('>%dH' % ((len(rom) - 0x200) // 2), rom[0x200:])) & 0xFFFF
     rom[0x18E:0x190] = struct.pack('>H', cs)
     open(out or OUT, 'wb').write(rom)
@@ -120,4 +126,4 @@ def build(extra_cflags=(), debug=False, out=None):
     return out or OUT
 
 if __name__ == '__main__':
-    build(extra_cflags=tuple(os.environ.get('AIDEF', '').split()), debug='debug' in sys.argv, out=os.path.join(HERE, 'sor2_v8_debug.bin') if 'debug' in sys.argv else None)
+    build(extra_cflags=tuple(os.environ.get('AIDEF', '').split()), debug='debug' in sys.argv, out=os.path.join(HERE, 'sor2_v9_debug.bin') if 'debug' in sys.argv else None)

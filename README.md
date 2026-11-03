@@ -22,7 +22,7 @@ its own AI written in C and compiled for the console's 68000 CPU.
    | MD5 | `cb75d5a6919b61efe917bea5762c1cb7` |
    | SHA-1 | `8b656eec9692d88bbbb84787142aa732b44ce0be` |
 
-2. Apply [`patch/Streets of Rage 2 - CPU Partner v9.ips`](patch/) (latest; `v8.ips` is still there) to the original ROM with any IPS patcher
+2. Apply [`patch/Streets of Rage 2 - CPU Partner v9.ips`](patch/) to that original ROM with any IPS patcher
    (Floating IPS, Lunar IPS, RomPatcher.js, …).
 3. Load the patched ROM in any Genesis emulator or flash cart.
 4. On the main menu choose **CPU PARTNER**.
@@ -68,7 +68,7 @@ Requirements:
 # put the original ROM in the repository root, named exactly:
 #   "Streets of Rage 2 (USA).md"
 cd src
-python3 build.py              # -> src/sor2_cpu_partner_v8.bin
+python3 build.py              # -> src/sor2_cpu_partner_v9.bin
 python3 build.py debug        # test build that snapshots the AI's input each frame
 ```
 
@@ -82,13 +82,14 @@ The release build is byte-identical to the ROM the IPS patch produces.
 ## Repository layout
 
 ```
-patch/   IPS patches for Streets of Rage 2 (USA): v8 and v9 (both apply to the original ROM)
+patch/   the IPS patch for Streets of Rage 2 (USA); it applies to the original ROM
 src/     ai.c            the CPU partner's brain (C, compiled for the 68000)
          scan.asm        hand-written 68000 versions of the AI's two hot loops
          cpu_partner.asm hooks, menus, filters, bug fixes (68000 assembly)
          build.py        compiles, assembles and patches the original ROM
          host.c          native build of ai.c for differential testing on a PC
-         v9/             the v9 patches (make-v9.js and one .s file per patch)
+         v9_patches.json the v9 byte edits, applied by build.py
+         patches-v9/     one .s file per v9 patch, explaining it
 docs/    technical write-up
 ```
 

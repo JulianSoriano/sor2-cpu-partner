@@ -2,7 +2,7 @@
 
 ## v9
 
-Patches the partner's behaviour on top of v8. **The IPS patch applies to the original, unmodified Streets of Rage 2 (USA) ROM** (it contains v8 too). Everything below was measured with scripted test runs in RetroLab; it has not been through long play-testing yet.
+Builds on v8. **The IPS patch applies to the original, unmodified Streets of Rage 2 (USA) ROM** and contains everything. Everything below was measured with scripted test runs in RetroLab; it has not been through long play-testing yet.
 
 - **Jump kicks:** fewer, and only when there is a real gap to close (cooldown 40 -> 180 frames, range 32-90 -> 48-80 px). On the stage 1 test route her jump kicks went from 114 to about 50-64.
 - **Screen edges:** with nothing to fight she heads for the middle-right of the screen (camera + 230) and never gets more than 150 px ahead of you, instead of pressing into the right edge and pulling the camera away.
@@ -12,7 +12,7 @@ Patches the partner's behaviour on top of v8. **The IPS patch applies to the ori
 - No slowdown or crash added: on the stage 1 route 179 slow frames (2.2%) before and after, 56-59% 68000 busy, no freezes.
 - Tried and removed: giving the partner the versus-mode alternate colours when both pick the same character. The colours come from a palette line that later stages overwrite, so her outfit changed colour in some places.
 
-Source for the v9 patches is in `src/v9/` (`make-v9.js` applies them to the v8 ROM; each `.s` file explains one patch). To rebuild: build v8 as described in the README, then `node src/v9/make-v9.js v8.md v9.md`. The released IPS is the difference between the original ROM and that result.
+Source for the v9 patches: `src/v9_patches.json` (the byte edits, applied by `build.py` right after the v8 code is in) and `src/patches-v9/*.s` (one commented source file per patch). There is only one release patch, `patch/Streets of Rage 2 - CPU Partner v9.ips`, and it applies to the original ROM; the separate v8 patch is no longer shipped.
 
 ## v8
 
